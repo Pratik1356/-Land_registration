@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Land Registration DApp</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<style>
+  :root {
+    --ink: #1c2430;
+    --ink-soft: #5b6472;
+    --line: #e3ddce;
+    --paper: #fbf8f1;
+    --parchment: #f2ead9;
+    --brass: #a97c40;
+    --brass-dark: #8a622e;
+    --green: #2f6b45;
+    --red: #a1442f;
+    --font-display: "Georgia", "Times New Roman", serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    --font-mono: "Courier New", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-body);
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 36px 20px 60px;
+    color: var(--ink);
+    background: var(--parchment);
+    line-height: 1.5;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: 30px;
+    margin: 0 0 4px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+
+  .muted {
+    color: var(--ink-soft);
+    font-size: 13.5px;
+    margin: 0 0 28px;
+  }
+
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin: 16px 0;
+    background: var(--paper);
+    box-shadow: 0 1px 2px rgba(28, 36, 48, 0.04);
+  }
+
+  .card h3 {
+    font-family: var(--font-display);
+    font-size: 18px;
+    margin: 0 0 16px;
+    color: var(--ink);
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  button {
+    background: var(--brass);
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 4px 6px 4px 0;
+    transition: background 0.15s ease, transform 0.05s ease;
+  }
+
+  button:hover { background: var(--brass-dark); }
+  button:active { transform: translateY(1px); }
+
+  input {
+    padding: 10px 12px;
+    width: 100%;
+    max-width: 260px;
+    font-size: 14px;
+    font-family: var(--font-body);
+    margin: 0 8px 10px 0;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: #fff;
+    color: var(--ink);
+  }
+
+  input:focus {
+    outline: none;
+    border-color: var(--brass);
+    box-shadow: 0 0 0 3px rgba(169, 124, 64, 0.15);
+  }
+
+  input.wide { max-width: 380px; }
+
+  .row {
+    margin: 10px 0;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+  }
+
+  .label {
+    display: inline-block;
+    min-width: 150px;
+    font-weight: 600;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+  }
+
+  .value { font-size: 14.5px; }
+
+  .search-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+
+  .search-row input { margin: 0; flex: 1; min-width: 160px; }
+
+  #status {
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: #eef1ec;
+    min-height: 20px;
+    font-size: 13.5px;
+    word-break: break-all;
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 14px;
+    font-size: 13px;
+  }
+
+  th {
+    text-align: left;
+    padding: 8px 8px;
+    background: var(--parchment);
+    color: var(--ink-soft);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--line);
+  }
+
+  td {
+    text-align: left;
+    padding: 8px 8px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  @media (max-width: 480px) {
+    .label { min-width: 120px; }
+    input { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Land Registration DApp</h1>
+<p class="muted">Connect MetaMask (Sepolia network) and interact with the deployed LandRegistry contract.</p>
+
+<div class="card">
+  <button id="connectBtn">Connect MetaMask</button>
+  <div class="row"><span class="label">Account:</span><span class="value" id="account">not connected</span></div>
+  <div class="row"><span class="label">Network:</span><span class="value" id="network">-</span></div>
+</div>
+
+<div class="card">
+  <h3>Register land</h3>
+  <div class="row"><input id="regLandId" type="text" placeholder="Land ID e.g. 101" /></div>
+  <div class="row"><input id="regLocation" class="wide" type="text" placeholder="Location e.g. Andheri, Mumbai" /></div>
+  <div class="row"><input id="regArea" type="text" placeholder="Area in sq. ft." /></div>
+  <button id="registerBtn">Register on blockchain</button>
+</div>
+
+<div class="card">
+  <h3>Search / verify land</h3>
+  <div class="search-row">
+    <input id="searchLandId" type="text" placeholder="Land ID to look up" />
+    <button id="searchBtn">Search</button>
+  </div>
+  <div class="row"><span class="label">Owner:</span><span class="value" id="s_owner">-</span></div>
+  <div class="row"><span class="label">Location:</span><span class="value" id="s_location">-</span></div>
+  <div class="row"><span class="label">Area:</span><span class="value" id="s_area">-</span> sq. ft.</div>
+  <div class="row"><span class="label">Registered on:</span><span class="value" id="s_date">-</span></div>
+  <table id="historyTable" style="display:none;">
+    <thead><tr><th>From</th><th>To</th><th>When</th></tr></thead>
+    <tbody id="historyBody"></tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>Transfer ownership</h3>
+  <div class="row"><input id="trLandId" type="text" placeholder="Land ID" /></div>
+  <div class="row"><input id="trNewOwner" class="wide" type="text" placeholder="New owner's wallet address (0x...)" /></div>
+  <button id="transferBtn">Transfer ownership</button>
+</div>
+
+<div class="card">
+  <h3>My land</h3>
+  <button id="myLandBtn">Load my registered land</button>
+  <table id="myLandTable" style="display:none;">
+    <thead><tr><th>Land ID</th><th>Location</th><th>Area</th></tr></thead>
+    <tbody id="myLandBody"></tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>Status</h3>
+  <div id="status">Ready.</div>
+</div>
+
+<script>
+// ===== 1. PASTE YOUR DEPLOYED CONTRACT ADDRESS HERE =====
+const CONTRACT_ADDRESS = "0xCb17D72D700f8613d82316c4d36aefB24b30C341";
+const ABI = [
+  "function registerLand(uint256 _landId, string _location, uint256 _area) public",
+  "function transferOwnership(uint256 _landId, address _newOwner) public",
+  "function getLand(uint256 _landId) public view returns (uint256 id, string location, uint256 area, address owner, uint256 registeredAt)",
+  "function isRegistered(uint256 _landId) public view returns (bool)",
+  "function getOwnershipHistory(uint256 _landId) public view returns (tuple(address from, address to, uint256 timestamp)[])",
+  "function getLandsByOwner(address _owner) public view returns (uint256[])",
+  "function getAllLandIds() public view returns (uint256[])",
+  "event LandRegistered(uint256 indexed landId, address indexed owner, string location, uint256 area)",
+  "event OwnershipTransferred(uint256 indexed landId, address indexed from, address indexed to)"
+];
+
+let provider, signer, contract, userAddress;
+
+const $ = (id) => document.getElementById(id);
+const setStatus = (msg) => { $("status").textContent = msg; };
+
+async function connect() {
+  if (!window.ethereum) { setStatus("MetaMask not found. Please install the MetaMask extension."); return; }
+  try {
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
+    const net = await provider.getNetwork();
+
+    $("account").textContent = userAddress;
+    $("network").textContent = net.name + " (chainId " + net.chainId + ")";
+
+    if (net.chainId !== 11155111) {
+      setStatus("Warning: you are not on Sepolia (chainId 11155111). Switch the network in MetaMask.");
+    } else {
+      setStatus("Connected to Sepolia.");
+    }
+
+    if (CONTRACT_ADDRESS.startsWith("PASTE")) {
+      setStatus("Please paste your deployed contract address into the CONTRACT_ADDRESS field in the HTML file.");
+      return;
+    }
+
+    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+  } catch (e) { setStatus("Error: " + (e.message || e)); }
+}
+
+async function registerLand() {
+  if (!contract) { setStatus("Connect first."); return; }
+  const landId = $("regLandId").value.trim();
+  const location = $("regLocation").value.trim();
+  const area = $("regArea").value.trim();
+  if (!landId || !location || !area) { setStatus("Fill in Land ID, location, and area."); return; }
+
+  try {
+    setStatus("Checking Land ID...");
+    const taken = await contract.isRegistered(landId);
+    if (taken) { setStatus("Land ID " + landId + " is already registered."); return; }
+
+    setStatus("Registering... confirm in MetaMask.");
+    const tx = await contract.registerLand(landId, location, area);
+    await tx.wait();
+    setStatus("Land " + landId + " registered! Tx: " + tx.hash);
+    $("regLandId").value = ""; $("regLocation").value = ""; $("regArea").value = "";
+  } catch (e) { setStatus("Error: " + (e.reason || e.message || e)); }
+}
+
+async function searchLand() {
+  if (!contract) { setStatus("Connect first."); return; }
+  const landId = $("searchLandId").value.trim();
+  if (!landId) { setStatus("Enter a Land ID to search."); return; }
+
+  try {
+    setStatus("Looking up Land ID " + landId + "...");
+    const exists = await contract.isRegistered(landId);
+    if (!exists) {
+      $("s_owner").textContent = "-"; $("s_location").textContent = "-";
+      $("s_area").textContent = "-"; $("s_date").textContent = "-";
+      $("historyTable").style.display = "none";
+      setStatus("No land found with ID " + landId + ".");
+      return;
+    }
+
+    const land = await contract.getLand(landId);
+    $("s_owner").textContent = land.owner;
+    $("s_location").textContent = land.location;
+    $("s_area").textContent = land.area.toString();
+    $("s_date").textContent = new Date(land.registeredAt.toNumber() * 1000).toLocaleString();
+
+    const hist = await contract.getOwnershipHistory(landId);
+    const body = $("historyBody");
+    body.innerHTML = "";
+    hist.forEach((h) => {
+      const row = document.createElement("tr");
+      const fromText = h.from === "0x0000000000000000000000000000000000000000" ? "Registered" : h.from;
+      row.innerHTML = "<td>" + fromText + "</td><td>" + h.to + "</td><td>" +
+        new Date(h.timestamp.toNumber() * 1000).toLocaleDateString() + "</td>";
+      body.appendChild(row);
+    });
+    $("historyTable").style.display = "table";
+
+    setStatus("Record found for Land ID " + landId + ".");
+  } catch (e) { setStatus("Error: " + (e.reason || e.message || e)); }
+}
+
+async function transferOwnership() {
+  if (!contract) { setStatus("Connect first."); return; }
+  const landId = $("trLandId").value.trim();
+  const newOwner = $("trNewOwner").value.trim();
+  if (!landId || !newOwner) { setStatus("Fill in Land ID and the new owner's address."); return; }
+
+  try {
+    setStatus("Checking ownership...");
+    const exists = await contract.isRegistered(landId);
+    if (!exists) { setStatus("Land ID " + landId + " is not registered."); return; }
+
+    const land = await contract.getLand(landId);
+    if (land.owner.toLowerCase() !== userAddress.toLowerCase()) {
+      setStatus("Only the current owner (" + land.owner + ") can transfer this land.");
+      return;
+    }
+
+    setStatus("Transferring... confirm in MetaMask.");
+    const tx = await contract.transferOwnership(landId, newOwner);
+    await tx.wait();
+    setStatus("Land " + landId + " transferred to " + newOwner + ". Tx: " + tx.hash);
+    $("trLandId").value = ""; $("trNewOwner").value = "";
+  } catch (e) { setStatus("Error: " + (e.reason || e.message || e)); }
+}
+
+async function loadMyLand() {
+  if (!contract) { setStatus("Connect first."); return; }
+  try {
+    setStatus("Loading your land records...");
+    const ids = await contract.getLandsByOwner(userAddress);
+    const body = $("myLandBody");
+    body.innerHTML = "";
+
+    for (const id of ids) {
+      const land = await contract.getLand(id);
+      const row = document.createElement("tr");
+      row.innerHTML = "<td>" + land.id.toString() + "</td><td>" + land.location + "</td><td>" + land.area.toString() + "</td>";
+      body.appendChild(row);
+    }
+
+    $("myLandTable").style.display = ids.length ? "table" : "none";
+    setStatus(ids.length ? ("You own " + ids.length + " parcel(s).") : "You don't own any registered land yet.");
+  } catch (e) { setStatus("Error: " + (e.reason || e.message || e)); }
+}
+
+$("connectBtn").onclick = connect;
+$("registerBtn").onclick = registerLand;
+$("searchBtn").onclick = searchLand;
+$("transferBtn").onclick = transferOwnership;
+$("myLandBtn").onclick = loadMyLand;
+</script>
+
+</body>
+</html>
